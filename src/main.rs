@@ -17,10 +17,10 @@ fn main() {
 
     // Setup RPC client
     let rpc_addr = matches
-        .value_of("address")
+        .value_of("bitcoin-address")
         .unwrap_or("http://localhost:8332");
-    let bitcoin_username = matches.value_of("busername").unwrap_or("");
-    let bitcoin_password = matches.value_of("bpassword").unwrap_or("");
+    let bitcoin_username = matches.value_of("bitcoin-username").unwrap_or("");
+    let bitcoin_password = matches.value_of("bitcoin-password").unwrap_or("");
     let window = matches
         .value_of("window")
         .map(|s| s.parse::<usize>().unwrap_or(25))
@@ -41,7 +41,6 @@ fn main() {
 
     // Fetch all transactions in block window
     let mut block_hash = rpc.get_best_block_hash().unwrap();
-
     let mut raw_txs = Vec::with_capacity(window * 1024);
     for _ in 0..window {
         let block = rpc.get_block(&block_hash).unwrap();
@@ -65,14 +64,17 @@ fn main() {
     let mut compressor_dict = zstd::block::Compressor::with_dict(dictionary);
 
     // Begin compression loop
-    let mut last_block_hash = rpc.get_best_block_hash().unwrap();
+    let mut last_block_hash: bitcoin_hashes::sha256d::Hash = Default::default();
 
     loop {
         let current_block_hash = rpc.get_best_block_hash().unwrap();
         if current_block_hash == last_block_hash {
             // Sleep
             println!("no new block");
+            thread::sleep_ms(5_000);
+            
         } else {
+            println!("Running compression");
             last_block_hash = current_block_hash;
             let block = rpc.get_block(&block_hash).unwrap();
             let raw_tx_inner: Vec<(String, Vec<u8>)> = block

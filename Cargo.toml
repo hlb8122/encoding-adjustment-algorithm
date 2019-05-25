@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 zstd = "*"
-bitcoincore-rpc = "*"
 influent = "*"
+bitcoincore-rpc = {version = "*", git = "https://github.com/hlb8122/rust-bitcoincore-rpc.git", branch = "development/migrate-to-bch"}
 clap = {version = "*", features = ["yaml"]}
+bitcoin_hashes = "0.3"

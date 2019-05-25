@@ -3,38 +3,37 @@ version: "0.1"
 author: Harry L. Barber <hlbarber93@gmail.com>
 about: Monitors the performance of the EAA
 args:
-    - baddress:
-        short: ba
-        long: baddress
+    - bitcoin-address:
+        long: bitcoin-address
         help: Sets the address of the Bitcoin RPC
         takes_value: true
-    - busername:
-        short: bu
-        long: busername
+    - bitcoin-username:
+        long: bitcoin-username
         help: Sets the username for the Bitcoin RPC
         takes_value: true
-    - busername:
-        short: bp
-        long: bpassword
+    - bitcoin-password:
+        long: bitcoin-password
         help: Sets the password for the Bitcoin RPC
         takes_value: true
-    - iaddress:
-        short: ba
-        long: baddress
-        help: Sets the address of the Bitcoin RPC
+    - influx-address:
+        long: influx-address
+        help: Sets the address of the InfluxDB instance
         takes_value: true
-    - iusername:
-        short: bu
-        long: busername
-        help: Sets the username for the Bitcoin RPC
+    - influx-username:
+        long: influx-username
+        help: Sets the username for the InfluxDB instance
         takes_value: true
-    - iusername:
-        short: bp
-        long: bpassword
-        help: Sets the password for the Bitcoin RPC
+    - influx-password:
+        long: influx-password
+        help: Sets the password for the InfluxDB instance
         takes_value: true
     - window:
         short: w
         long: window
         help: Sets the number of blocks in the training window
+        takes_value: true
+    - level:
+        short: l
+        long: level
+        help: Sets the level of compression (0-9)
         takes_value: true
