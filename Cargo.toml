@@ -5,3 +5,6 @@ authors = ["Harry <hlbarber93@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+zstd = "*"
+bitcoincore-rpc = "*"
+influent = "*"
