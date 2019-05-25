@@ -4,11 +4,18 @@ pub mod utils;
 #[macro_use]
 extern crate clap;
 
+use std::thread::sleep_ms;
+
 use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::App;
-use utils::decode_hex;
-use monitoring::Monitor;
 use influent::client::Credentials;
+use log::info;
+use std::env;
+
+use utils::{decode_hex, ObjectType, CompressionType};
+use monitoring::Monitor;
+
+const DEFAULT_WINDOW: usize = 3;
 
 fn main() {
     // Setup CLI
@@ -23,8 +30,8 @@ fn main() {
     let bitcoin_password = matches.value_of("bitcoin-password").unwrap_or("");
     let window = matches
         .value_of("window")
-        .map(|s| s.parse::<usize>().unwrap_or(25))
-        .unwrap_or(25);
+        .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_WINDOW))
+        .unwrap_or(DEFAULT_WINDOW);
     let level = 8;
 
     let rpc = Client::new(
@@ -33,13 +40,20 @@ fn main() {
     )
     .unwrap();
 
-    // Setup monitoring
-    // let credentials = Credentials {
-    //     database: ""
-    // };
-    // let monitor = Monitor::new(credentials)
+    // Setup logging
+    env::set_var("RUST_LOG", "info");
+    env_logger::init();
 
-    // Fetch all transactions in block window
+    // Setup monitoring
+    let credentials = Credentials {
+        database: "compression",
+        username: "",
+        password: ""
+    };
+    let monitor = Monitor::new(credentials, "http://35.202.119.18:8086");
+
+    // Fetch all transactions in training window
+    info!("fetching training window");
     let mut block_hash = rpc.get_best_block_hash().unwrap();
     let mut raw_txs = Vec::with_capacity(window * 1024);
     for _ in 0..window {
@@ -56,6 +70,7 @@ fn main() {
     }
 
     // Train on block window
+    info!("training dictionary...");
     let dictionary = zstd::dict::from_samples(&raw_txs, 1024).unwrap();
     drop(raw_txs);
 
@@ -64,17 +79,18 @@ fn main() {
     let mut compressor_dict = zstd::block::Compressor::with_dict(dictionary);
 
     // Begin compression loop
+    info!("starting training loop...");
     let mut last_block_hash: bitcoin_hashes::sha256d::Hash = Default::default();
 
     loop {
         let current_block_hash = rpc.get_best_block_hash().unwrap();
         if current_block_hash == last_block_hash {
             // Sleep
-            println!("no new block");
-            thread::sleep_ms(5_000);
+            info!("waiting for new block...");
+            sleep_ms(5_000);
             
         } else {
-            println!("Running compression");
+            info!("new block found; running compression");
             last_block_hash = current_block_hash;
             let block = rpc.get_block(&block_hash).unwrap();
             let raw_tx_inner: Vec<(String, Vec<u8>)> = block
@@ -85,18 +101,26 @@ fn main() {
 
             // Benchmark tx compression
             for (id, raw) in raw_tx_inner {
+                info!("benchmarking on tx {}", id);
                 let raw_slice = &raw[..];
 
                 let out_wdict = compressor_dict.compress(raw_slice, level).unwrap();
                 let out_wodict = compressor_nodict.compress(raw_slice, level).unwrap();
 
-                println!("{} before compression", raw.len());
-                println!("{} w dict", out_wdict.len());
-                println!("{} wo. dict", out_wodict.len());
+                let uncomp_size = raw.len();
+                let comp_wo_dict_size = out_wodict.len();
+                let comp_w_dict_size = out_wdict.len();
+                info!("raw size: {} bytes", uncomp_size);
+                info!("compressed w/o dict size: {} bytes", uncomp_size);
+                info!("compressed w dict size: {} bytes", comp_w_dict_size);
+
+                monitor.write(&id, ObjectType::Transaction, None, uncomp_size).poll().unwrap();
+                monitor.write(&id, ObjectType::Transaction, Some(CompressionType::NoDict), comp_wo_dict_size).poll().unwrap();
+                monitor.write(&id, ObjectType::Transaction, Some(CompressionType::Dict), comp_w_dict_size).poll().unwrap();
             }
 
             // Benchmark block compression
-            let raw_block = rpc.get_block_hex(&block_hash);
+            // let raw_block = rpc.get_block_hex(&block_hash);
         }
     }
 }
