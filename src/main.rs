@@ -15,7 +15,7 @@ use std::env;
 use utils::{decode_hex, ObjectType, CompressionType};
 use monitoring::Monitor;
 
-const DEFAULT_WINDOW: usize = 5;
+const DEFAULT_WINDOW: usize = 250;
 
 fn main() {
     // Setup CLI
@@ -54,12 +54,11 @@ fn main() {
 
     // Fetch all transactions in training window
     info!("fetching training window...");
-
     let mut block_hash = rpc.get_best_block_hash().unwrap();
-    info!("current chaintip {}", block_hash);
-
     let mut raw_txs = Vec::with_capacity(window * 1024);
+
     for _ in 0..window {
+        info!("adding block {} to the training set", block_hash);
         let block = rpc.get_block(&block_hash).unwrap();
 
         let mut raw_tx_inner: Vec<Vec<u8>> = block
@@ -74,7 +73,7 @@ fn main() {
 
     // Train on block window
     info!("training dictionary...");
-    let dictionary = zstd::dict::from_samples(&raw_txs, 1024).unwrap();
+    let dictionary = zstd::dict::from_samples(&raw_txs, 1024*1024).unwrap();
     drop(raw_txs);
 
     // Compressors
@@ -110,16 +109,21 @@ fn main() {
                 let out_wdict = compressor_dict.compress(raw_slice, level).unwrap();
                 let out_wodict = compressor_nodict.compress(raw_slice, level).unwrap();
 
-                let uncomp_size = raw.len();
+                let raw_size = raw.len();
                 let comp_wo_dict_size = out_wodict.len();
                 let comp_w_dict_size = out_wdict.len();
-                info!("raw size: {} bytes", uncomp_size);
-                info!("compressed w/o dict size: {} bytes", uncomp_size);
+                info!("raw size: {} bytes", raw_size);
+                info!("compressed w/o dict size: {} bytes", comp_wo_dict_size);
                 info!("compressed w dict size: {} bytes", comp_w_dict_size);
 
-                monitor.write(&id, ObjectType::Transaction, None, uncomp_size).poll().unwrap();
-                monitor.write(&id, ObjectType::Transaction, Some(CompressionType::NoDict), comp_wo_dict_size).poll().unwrap();
-                monitor.write(&id, ObjectType::Transaction, Some(CompressionType::Dict), comp_w_dict_size).poll().unwrap();
+                let ratio_raw_to_wo = comp_wo_dict_size as f32 / raw_size as f32;
+                let ratio_raw_to_w = comp_w_dict_size as f32 / raw_size as f32;
+
+                info!("ratios: 1 - {} - {}", ratio_raw_to_wo, ratio_raw_to_w);
+
+                // monitor.write(&id, ObjectType::Transaction, None, raw_size);
+                // monitor.write(&id, ObjectType::Transaction, Some(CompressionType::NoDict), comp_wo_dict_size);
+                // monitor.write(&id, ObjectType::Transaction, Some(CompressionType::Dict), comp_w_dict_size);
             }
 
             // Benchmark block compression
