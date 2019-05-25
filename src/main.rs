@@ -15,7 +15,7 @@ use std::env;
 use utils::{decode_hex, ObjectType, CompressionType};
 use monitoring::Monitor;
 
-const DEFAULT_WINDOW: usize = 3;
+const DEFAULT_WINDOW: usize = 5;
 
 fn main() {
     // Setup CLI
@@ -53,8 +53,11 @@ fn main() {
     let monitor = Monitor::new(credentials, "http://35.202.119.18:8086");
 
     // Fetch all transactions in training window
-    info!("fetching training window");
+    info!("fetching training window...");
+
     let mut block_hash = rpc.get_best_block_hash().unwrap();
+    info!("current chaintip {}", block_hash);
+
     let mut raw_txs = Vec::with_capacity(window * 1024);
     for _ in 0..window {
         let block = rpc.get_block(&block_hash).unwrap();
