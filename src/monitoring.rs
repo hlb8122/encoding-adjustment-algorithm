@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use influent::client::{Client, ClientWriteResult, Credentials};
+use influent::client::{Client, ClientWriteResult, Credentials, http::HttpClient};
 use influent::create_client;
 use influent::measurement::{Measurement, Value};
 
@@ -13,8 +13,8 @@ pub enum ObjectType {
 impl Into<&str> for ObjectType {
     fn into(self) -> &'static str {
         match self {
-            Block => "block",
-            Transaction => "transaction",
+            ObjectType::Block => "block",
+            ObjectType::Transaction => "transaction",
         }
     }
 }
@@ -33,15 +33,14 @@ impl Into<&'static str> for CompressionType {
     }
 }
 
-#[derive(Clone)]
-struct Monitor {
-    client: Arc<Client>,
+pub struct Monitor {
+    client: HttpClient<'static>,
 }
 
 impl<'a> Monitor {
     pub fn new(credentials: Credentials<'static>, host: &'static str) -> Monitor {
         Monitor {
-            client: Arc::new(create_client(credentials, vec![host])),
+            client: create_client(credentials, vec![host]),
         }
     }
 

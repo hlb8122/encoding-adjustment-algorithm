@@ -3,19 +3,34 @@ version: "0.1"
 author: Harry L. Barber <hlbarber93@gmail.com>
 about: Monitors the performance of the EAA
 args:
-    - address:
-        short: a
-        long: address
+    - baddress:
+        short: ba
+        long: baddress
         help: Sets the address of the Bitcoin RPC
         takes_value: true
-    - username:
-        short: u
-        long: username
+    - busername:
+        short: bu
+        long: busername
         help: Sets the username for the Bitcoin RPC
         takes_value: true
-    - username:
-        short: p
-        long: password
+    - busername:
+        short: bp
+        long: bpassword
+        help: Sets the password for the Bitcoin RPC
+        takes_value: true
+    - iaddress:
+        short: ba
+        long: baddress
+        help: Sets the address of the Bitcoin RPC
+        takes_value: true
+    - iusername:
+        short: bu
+        long: busername
+        help: Sets the username for the Bitcoin RPC
+        takes_value: true
+    - iusername:
+        short: bp
+        long: bpassword
         help: Sets the password for the Bitcoin RPC
         takes_value: true
     - window:
