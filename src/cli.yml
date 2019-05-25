@@ -1,0 +1,25 @@
+name: EAA Benchmarker
+version: "0.1"
+author: Harry L. Barber <hlbarber93@gmail.com>
+about: Monitors the performance of the EAA
+args:
+    - address:
+        short: a
+        long: address
+        help: Sets the address of the Bitcoin RPC
+        takes_value: true
+    - username:
+        short: u
+        long: username
+        help: Sets the username for the Bitcoin RPC
+        takes_value: true
+    - username:
+        short: p
+        long: password
+        help: Sets the password for the Bitcoin RPC
+        takes_value: true
+    - window:
+        short: w
+        long: window
+        help: Sets the number of blocks in the training window
+        takes_value: true

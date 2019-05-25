@@ -8,3 +8,4 @@ edition = "2018"
 zstd = "*"
 bitcoincore-rpc = "*"
 influent = "*"
+clap = {version = "*", features = ["yaml"]}
