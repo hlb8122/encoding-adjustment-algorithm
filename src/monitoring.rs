@@ -5,7 +5,7 @@ use influent::create_client;
 use influent::measurement::{Measurement, Value};
 use tokio::prelude::*;
 
-use crate::utils::{CompressionType, ObjectType};
+use crate::utils::ObjectType;
 
 pub struct Monitor<'a> {
     client: HttpClient<'a>,
@@ -22,18 +22,17 @@ impl<'a> Monitor<'a> {
         &self,
         object_id: &str,
         object_type: ObjectType,
-        ctype_opt: Option<CompressionType>,
-        size: usize,
+        raw_size: usize,
+        wo_dict_size: usize,
+        w_dict_size: usize
     ) {
-        let ctype_str = match ctype_opt {
-            Some(ctype) => ctype.into(),
-            None => "none",
-        };
-        let mut measurement = Measurement::new(ctype_str);
-        measurement.add_tag("object_type", Cow::Borrowed(object_type.into()));
 
-        measurement.add_tag("id", object_id);
-        measurement.add_field("size", Value::Integer(size as i64));
+        let mut measurement = Measurement::new("compression");
+        measurement.add_tag("object_type", Cow::Borrowed(object_type.into()));
+        measurement.add_tag("id", Cow::Borrowed(object_id));
+        measurement.add_field("raw_size", Value::Integer(raw_size as i64));
+        measurement.add_field("wo_dict_size", Value::Integer(wo_dict_size as i64));
+        measurement.add_field("w_dict_size", Value::Integer(w_dict_size as i64));
 
         let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
         rt.block_on(

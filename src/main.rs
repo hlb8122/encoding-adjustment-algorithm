@@ -13,7 +13,7 @@ use log::info;
 use std::env;
 
 use monitoring::Monitor;
-use utils::{decode_hex, CompressionType, ObjectType};
+use utils::{decode_hex, ObjectType};
 
 const DEFAULT_TRAINING_WINDOW: usize = 512;
 const DEFAULT_BITCOIN_ADDRESS: &str = "http://localhost:8332";
@@ -146,21 +146,9 @@ fn main() {
                 let ratio_raw_to_wo = comp_wo_dict_size as f32 / raw_size as f32;
                 let ratio_raw_to_w = comp_w_dict_size as f32 / raw_size as f32;
 
-                info!("ratios: 1 - {} - {}", ratio_raw_to_wo, ratio_raw_to_w);
+                info!("ratios: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
-                monitor.write(&id, ObjectType::Transaction, None, raw_size);
-                monitor.write(
-                    &id,
-                    ObjectType::Transaction,
-                    Some(CompressionType::NoDict),
-                    comp_wo_dict_size,
-                );
-                monitor.write(
-                    &id,
-                    ObjectType::Transaction,
-                    Some(CompressionType::Dict),
-                    comp_w_dict_size,
-                );
+                monitor.write(&id, ObjectType::Transaction, raw_size, comp_wo_dict_size, comp_w_dict_size);
             }
 
             // Benchmark block compression
@@ -181,22 +169,10 @@ fn main() {
             let ratio_raw_to_wo = comp_wo_dict_size as f32 / raw_size as f32;
             let ratio_raw_to_w = comp_w_dict_size as f32 / raw_size as f32;
 
-            info!("ratios: 1 - {} - {}", ratio_raw_to_wo, ratio_raw_to_w);
+            info!("compression ratio: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
             let id = last_block_hash.to_string();
-            monitor.write(&id, ObjectType::Block, None, raw_size);
-            monitor.write(
-                &id,
-                ObjectType::Block,
-                Some(CompressionType::NoDict),
-                comp_wo_dict_size,
-            );
-            monitor.write(
-                &id,
-                ObjectType::Block,
-                Some(CompressionType::Dict),
-                comp_w_dict_size,
-            );
+            monitor.write(&id, ObjectType::Block, raw_size, comp_wo_dict_size, comp_w_dict_size);
         }
     }
 }

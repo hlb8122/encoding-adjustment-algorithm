@@ -32,8 +32,13 @@ args:
         long: window
         help: Sets the number of blocks in the training window
         takes_value: true
-    - level:
+    - compression-level:
         short: l
-        long: level
+        long: compression-level
         help: Sets the level of compression (0-9)
+        takes_value: true
+    - dictionary-size:
+        short: d
+        long: dictionary-size
+        help: Sets the maximum dictionary size
         takes_value: true
