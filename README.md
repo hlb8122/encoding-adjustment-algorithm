@@ -1,6 +1,8 @@
 # Encoding Adjustment Algorithm Benchmarker
 
-Uses the last `window` blocks to train a dictionary. Grabs each new block and benchmarks raw size/compression without dictionary/compression with dictionary for each raw transaction.
+Uses the last `window` blocks to train a dictionary. Grabs each new block and benchmarks raw size/compression without dictionary/compression with dictionary for each raw transaction. Records the measurements to an influxdb.
+
+
 
 ## Build
 
