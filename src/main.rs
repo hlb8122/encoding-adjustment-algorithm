@@ -15,7 +15,7 @@ use std::env;
 use monitoring::Monitor;
 use utils::{decode_hex, ObjectType};
 
-const DEFAULT_TRAINING_WINDOW: usize = 512;
+const DEFAULT_TRAINING_WINDOW: usize = 1024;
 const DEFAULT_BITCOIN_ADDRESS: &str = "http://localhost:8332";
 const DEFAULT_BITCOIN_USERNAME: &str = "";
 const DEFAULT_BITCOIN_PASSWORD: &str = "";
@@ -65,55 +65,39 @@ fn main() {
     };
     let monitor = Monitor::new(credentials, influx_addr);
 
-    // Fetch all transactions in training window
-    info!("fetching training window...");
+    // Setup training window
     let window = matches
         .value_of("window")
         .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_TRAINING_WINDOW))
         .unwrap_or(DEFAULT_TRAINING_WINDOW);
-    let mut block_hash = rpc.get_best_block_hash().unwrap();
-    let mut raw_txs = Vec::with_capacity(window * 1024);
 
-    for i in 0..window {
-        info!(
-            "({} of {}) adding block {} to the training set",
-            i, window, block_hash
-        );
-        let block = rpc.get_block(&block_hash).unwrap();
+    let block_hash = rpc.get_best_block_hash().unwrap();
+    let training_set = utils::fetch_training_data(&rpc, block_hash, &window);
 
-        let mut raw_tx_inner: Vec<Vec<u8>> = block
-            .txdata
-            .iter()
-            .map(|tx| decode_hex(&tx.raw_hex()).unwrap())
-            .collect();
-        raw_txs.append(&mut raw_tx_inner);
-
-        block_hash = block.header.prev_blockhash;
-    }
-
-    // Train on block window
-    info!("training dictionary...");
+    // Setup dictionary generation
     let dictionary_size = matches
         .value_of("dictionary-size")
         .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_DICT_SIZE))
         .unwrap_or(DEFAULT_DICT_SIZE);
-    let dictionary = zstd::dict::from_samples(&raw_txs, 1024 * dictionary_size).unwrap();
-    drop(raw_txs);
+
+    let dictionary = utils::train_dictionary(training_set, &dictionary_size);
 
     // Compressors
     let level = matches
         .value_of("compression-level")
         .map(|s| s.parse::<i32>().unwrap_or(DEFAULT_COMPRESSION_LEVEL))
-        .unwrap_or(DEFAULT_COMPRESSION_LEVEL);;
+        .unwrap_or(DEFAULT_COMPRESSION_LEVEL);
     let mut compressor_nodict = zstd::block::Compressor::new();
     let mut compressor_dict = zstd::block::Compressor::with_dict(dictionary);
 
     // Begin compression loop
-    info!("starting training loop...");
+    info!("starting compression loop...");
     let mut last_block_hash: bitcoin_hashes::sha256d::Hash = Default::default();
+    let mut block_counter = 0;
 
     loop {
         let current_block_hash = rpc.get_best_block_hash().unwrap();
+
         if current_block_hash == last_block_hash {
             // Sleep
             info!("waiting for new block...");
@@ -121,11 +105,21 @@ fn main() {
         } else {
             info!("new block found; running compression");
             last_block_hash = current_block_hash;
-            let block = rpc.get_block(&block_hash).unwrap();
+
+            // Retrain
+            block_counter += 1;
+            if block_counter % window == 0 {
+                let training_set = utils::fetch_training_data(&rpc, current_block_hash, &window);
+                let dictionary = utils::train_dictionary(training_set, &dictionary_size);
+                compressor_nodict = zstd::block::Compressor::new();
+                compressor_dict = zstd::block::Compressor::with_dict(dictionary);
+            }
+
+            let block = rpc.get_block(&current_block_hash).unwrap();
             let raw_tx_inner: Vec<(String, Vec<u8>)> = block
                 .txdata
                 .iter()
-                .map(|tx| (tx.txid().to_string(), decode_hex(&tx.raw_hex()).unwrap()))
+                .map(|tx| (tx.txid().to_string(), decode_hex(&tx.raw_hex())))
                 .collect();
 
             // Benchmark tx compression
@@ -153,7 +147,7 @@ fn main() {
 
             // Benchmark block compression
             info!("benchmarking on block {}", last_block_hash);
-            let raw_block = decode_hex(&rpc.get_block_hex(&block_hash).unwrap()).unwrap();
+            let raw_block = decode_hex(&rpc.get_block_hex(&block_hash).unwrap());
 
             let out_wdict = compressor_dict.compress(&raw_block, level).unwrap();
             let out_wodict = compressor_nodict.compress(&raw_block, level).unwrap();
