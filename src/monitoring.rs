@@ -1,17 +1,18 @@
 use std::borrow::Cow;
 
-use influent::client::{Client, ClientWriteResult, Credentials, http::HttpClient};
+use influent::client::{http::HttpClient, Client, ClientWriteResult, Credentials};
 use influent::create_client;
 use influent::measurement::{Measurement, Value};
+use tokio::prelude::*;
 
 use crate::utils::{CompressionType, ObjectType};
 
-pub struct Monitor {
-    client: HttpClient<'static>,
+pub struct Monitor<'a> {
+    client: HttpClient<'a>,
 }
 
-impl<'a> Monitor {
-    pub fn new(credentials: Credentials<'static>, host: &'static str) -> Monitor {
+impl<'a> Monitor<'a> {
+    pub fn new(credentials: Credentials<'a>, host: &'a str) -> Monitor<'a> {
         Monitor {
             client: create_client(credentials, vec![host]),
         }
@@ -23,7 +24,7 @@ impl<'a> Monitor {
         object_type: ObjectType,
         ctype_opt: Option<CompressionType>,
         size: usize,
-    ) -> ClientWriteResult {
+    ) {
         let ctype_str = match ctype_opt {
             Some(ctype) => ctype.into(),
             None => "none",
@@ -34,6 +35,13 @@ impl<'a> Monitor {
         measurement.add_tag("id", object_id);
         measurement.add_field("size", Value::Integer(size as i64));
 
-        self.client.write_one(measurement, None)
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        rt.block_on(
+            self.client
+                .write_one(measurement, None)
+                .then(move |_| self.client.query("select * from \"sut\"".to_string(), None))
+                .map_err(|e| println!("{:?}", e)),
+        )
+        .unwrap();
     }
 }
