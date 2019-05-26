@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use influent::client::{http::HttpClient, Client, ClientWriteResult, Credentials};
+use influent::client::{http::HttpClient, Client, Credentials};
 use influent::create_client;
 use influent::measurement::{Measurement, Value};
 use tokio::prelude::*;

@@ -76,8 +76,8 @@ fn main() {
 
     for i in 0..window {
         info!(
-            "({} of window) adding block {} to the training set",
-            i, block_hash
+            "({} of {}) adding block {} to the training set",
+            i, window, block_hash
         );
         let block = rpc.get_block(&block_hash).unwrap();
 
