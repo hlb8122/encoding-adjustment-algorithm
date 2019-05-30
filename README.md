@@ -41,16 +41,21 @@ cargo build --release
 - window:
     short: w
     long: window
-    help: Sets the number of blocks in the training window
+    help: Sets the number of blocks in the training window (number of blocks)
+    takes_value: true
+- reset-period:
+    short: r
+    long: reset-period
+    help: Sets the frequency of retraining (number of blocks)
     takes_value: true
 - compression-level:
     short: l
     long: compression-level
-    help: Sets the level of compression (0-9)
+    help: Sets the level of compression (0-22)
     takes_value: true
 - dictionary-size:
     short: d
     long: dictionary-size
-    help: Sets the maximum dictionary size
+    help: Sets the maximum dictionary size (kilobytes)
     takes_value: true
 ```

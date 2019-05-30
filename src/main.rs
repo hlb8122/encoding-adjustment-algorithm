@@ -4,7 +4,8 @@ pub mod utils;
 #[macro_use]
 extern crate clap;
 
-use std::thread::sleep_ms;
+use std::thread::sleep;
+use std::time::Duration;
 
 use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::App;
@@ -15,7 +16,9 @@ use std::env;
 use monitoring::Monitor;
 use utils::{decode_hex, ObjectType};
 
+const BLOCK_CHECK_PERIOD: Duration = Duration::from_millis(1_000);
 const DEFAULT_TRAINING_WINDOW: usize = 1024;
+const DEFAULT_RESET_PERIOD: usize = 16;
 const DEFAULT_BITCOIN_ADDRESS: &str = "http://localhost:8332";
 const DEFAULT_BITCOIN_USERNAME: &str = "";
 const DEFAULT_BITCOIN_PASSWORD: &str = "";
@@ -23,7 +26,7 @@ const DEFAULT_INFLUX_ADDRESS: &str = "http://localhost:8332";
 const DEFAULT_INFLUX_USERNAME: &str = "";
 const DEFAULT_INFLUX_PASSWORD: &str = "";
 const DEFAULT_COMPRESSION_LEVEL: i32 = 22;
-const DEFAULT_DICT_SIZE: usize = 1024 * 8;
+const DEFAULT_DICT_SIZE: usize = 8;
 
 fn main() {
     // Setup CLI
@@ -70,6 +73,10 @@ fn main() {
         .value_of("window")
         .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_TRAINING_WINDOW))
         .unwrap_or(DEFAULT_TRAINING_WINDOW);
+    let reset_period = matches
+        .value_of("reset-period")
+        .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_RESET_PERIOD))
+        .unwrap_or(DEFAULT_TRAINING_WINDOW);
 
     let block_hash = rpc.get_best_block_hash().unwrap();
     let training_set = utils::fetch_training_data(&rpc, block_hash, &window);
@@ -78,7 +85,7 @@ fn main() {
     let dictionary_size = matches
         .value_of("dictionary-size")
         .map(|s| s.parse::<usize>().unwrap_or(DEFAULT_DICT_SIZE))
-        .unwrap_or(DEFAULT_DICT_SIZE);
+        .unwrap_or(DEFAULT_DICT_SIZE) * 1024;
 
     let dictionary = utils::train_dictionary(training_set, &dictionary_size);
 
@@ -101,14 +108,14 @@ fn main() {
         if current_block_hash == last_block_hash {
             // Sleep
             info!("waiting for new block...");
-            sleep_ms(10_000);
+            sleep(BLOCK_CHECK_PERIOD);
         } else {
             info!("new block found; running compression");
             last_block_hash = current_block_hash;
 
             // Retrain
             block_counter += 1;
-            if block_counter % window == 0 {
+            if block_counter % reset_period == 0 {
                 let training_set = utils::fetch_training_data(&rpc, current_block_hash, &window);
                 let dictionary = utils::train_dictionary(training_set, &dictionary_size);
                 compressor_nodict = zstd::block::Compressor::new();
@@ -165,7 +172,7 @@ fn main() {
 
             info!("compression ratio: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
-            let id = last_block_hash.to_string();
+            let id = current_block_hash.to_string();
             monitor.write(&id, ObjectType::Block, raw_size, comp_wo_dict_size, comp_w_dict_size);
         }
     }
