@@ -24,9 +24,8 @@ impl<'a> Monitor<'a> {
         object_type: ObjectType,
         raw_size: usize,
         wo_dict_size: usize,
-        w_dict_size: usize
+        w_dict_size: usize,
     ) {
-
         let mut measurement = Measurement::new("compression");
         measurement.add_tag("object_type", Cow::Borrowed(object_type.into()));
         measurement.add_tag("id", Cow::Borrowed(object_id));
