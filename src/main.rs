@@ -157,13 +157,14 @@ fn main() {
                             info!("ratios: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
                             // Write to influxdb
-                            future::Either::A(monitor.write(
+                            monitor.write(
                                 &id,
                                 ObjectType::Transaction,
                                 raw_size,
                                 comp_wo_dict_size,
                                 comp_w_dict_size,
-                            ))
+                            );
+                            ok(())
                         }
                         b"rawblock" => {
                             // Decode
@@ -211,7 +212,7 @@ fn main() {
                                 comp_wo_dict_size,
                                 comp_w_dict_size,
                             );
-                            future::Either::B(ok(()))
+                            ok(())
                         }
                         _ => {
                             error!("unexpected zmq message");
