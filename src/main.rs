@@ -43,9 +43,7 @@ fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(&yaml).get_matches().clone();
 
-    let bitcoin_ip = matches
-        .value_of("bitcoin-ip")
-        .unwrap_or(DEFAULT_BITCOIN_IP);
+    let bitcoin_ip = matches.value_of("bitcoin-ip").unwrap_or(DEFAULT_BITCOIN_IP);
     let bitcoin_username = matches
         .value_of("bitcoin-username")
         .unwrap_or(DEFAULT_BITCOIN_USERNAME);
@@ -159,15 +157,13 @@ fn main() {
                             info!("ratios: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
                             // Write to influxdb
-                            monitor.write(
+                            future::Either::A(monitor.write(
                                 &id,
                                 ObjectType::Transaction,
                                 raw_size,
                                 comp_wo_dict_size,
                                 comp_w_dict_size,
-                            );
-
-                            future::Either::A(ok(()))
+                            ))
                         }
                         b"rawblock" => {
                             // Decode

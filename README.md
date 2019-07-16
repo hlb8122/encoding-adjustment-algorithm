@@ -7,7 +7,7 @@ Uses the last `window` blocks to train a dictionary. Grabs each new block and be
 ## Build
 
 ```bash
-sudo apt install clang
+sudo apt install clang pkg-config
 cargo build --release
 ```
 
