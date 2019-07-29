@@ -35,7 +35,7 @@ impl<'a> Monitor<'a> {
         measurement.add_field("w_dict_size", Value::Integer(w_dict_size as i64));
         if let Some(prefix) = prefix_opt.as_ref() {
             let prefix_str = std::str::from_utf8(prefix).unwrap();
-            measurement.add_field("prefix", Value::String(prefix_str))
+            measurement.add_tag("prefix", Cow::Borrowed(prefix_str));
         }
 
         tokio::spawn(
