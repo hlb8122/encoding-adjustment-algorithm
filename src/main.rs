@@ -19,7 +19,7 @@ use bitcoin::{
 use bitcoin_hashes::hex::ToHex;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use clap::App;
-use futures::{future, future::ok, Future, Stream};
+use futures::{future::ok, Future, Stream};
 use futures_zmq::{prelude::*, Sub};
 use influent::client::Credentials;
 use log::{error, info};
@@ -43,7 +43,7 @@ fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(&yaml).get_matches().clone();
 
-    let bitcoin_ip = matches.value_of("bitcoin-ip").unwrap_or(DEFAULT_BITCOIN_IP);
+    let bitcoin_ip = matches.value_of("bitcoin-address").unwrap_or(DEFAULT_BITCOIN_IP);
     let bitcoin_username = matches
         .value_of("bitcoin-username")
         .unwrap_or(DEFAULT_BITCOIN_USERNAME);
@@ -156,6 +156,12 @@ fn main() {
 
                             info!("ratios: 1 | {} | {}", ratio_raw_to_wo, ratio_raw_to_w);
 
+                            // Grab prefix
+                            let prefix_opt = new_tx.output.iter().find(|output| {
+                                let raw_script = output.script_pubkey.to_bytes();
+                                raw_script[0] == 106
+                            }).map(|output| output.script_pubkey.to_bytes()[1..5].to_vec());
+
                             // Write to influxdb
                             monitor.write(
                                 &id,
@@ -163,6 +169,7 @@ fn main() {
                                 raw_size,
                                 comp_wo_dict_size,
                                 comp_w_dict_size,
+                                prefix_opt
                             );
                             ok(())
                         }
@@ -211,6 +218,7 @@ fn main() {
                                 raw_size,
                                 comp_wo_dict_size,
                                 comp_w_dict_size,
+                                None
                             );
                             ok(())
                         }

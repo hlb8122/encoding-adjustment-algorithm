@@ -8,6 +8,7 @@ edition = "2018"
 zstd = "*"
 influent = "*"
 bitcoincore-rpc = {version = "*", git = "https://github.com/hlb8122/rust-bitcoincore-rpc.git", branch = "development/migrate-to-bch"}
+bitcoin = "*"
 clap = {version = "*", features = ["yaml"]}
 bitcoin_hashes = "0.3"
 log = "*"
@@ -16,4 +17,3 @@ tokio = "*"
 futures-zmq = "*"
 zmq = "*"
 futures = "*"
-bitcoin = "*"
